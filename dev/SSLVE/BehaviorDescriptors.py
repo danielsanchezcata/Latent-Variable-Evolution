@@ -147,22 +147,20 @@ class CartPoleBD_v1:
 class CarRacingBD_v1:
     """
     3D behavior descriptor for CarRacing:
-    (full_throttle_ratio, steering_variance, offtrack_ratio)
+    (mean_throttle, steering_variance, mean_speed)
 
     Args:
         bin_ranges: list of (min, max) per dimension
         bin_sizes: list of number of bins per dimension
-        full_throttle_threshold: throttle threshold counted as "full throttle"
     """
 
-    def __init__(self, bin_ranges=None, bin_sizes=None, full_throttle_threshold=0.95):
+    def __init__(self, bin_ranges=None, bin_sizes=None):
         if bin_ranges is None:
-            bin_ranges = [(0.0, 1.0), (0.0, 0.6), (0.0, 1.0)]
+            bin_ranges = [(0.0, 1.0), (0.0, 0.6), (0.0, 40.0)]
         if bin_sizes is None:
-            bin_sizes = [12, 12, 12]
+            bin_sizes = [20, 20, 20]
         self.bin_ranges = bin_ranges
         self.bin_sizes = bin_sizes
-        self.full_throttle_threshold = full_throttle_threshold
 
     def describe(self, info):
         """
@@ -170,16 +168,17 @@ class CarRacingBD_v1:
             info: dict from CarRacingCollector.collect()
 
         Returns:
-            (full_throttle_ratio, steering_variance, offtrack_ratio)
+            (mean_throttle, steering_variance, mean_speed)
         """
         all_throttle = np.concatenate(info['throttle']) if info['throttle'] else np.array([0.0])
         all_steering = np.concatenate(info['steering']) if info['steering'] else np.array([0.0])
+        all_speeds = np.concatenate(info['speeds']) if info['speeds'] else np.array([0.0])
 
-        full_throttle_ratio = float(np.mean(all_throttle >= self.full_throttle_threshold))
+        mean_throttle = float(np.mean(all_throttle))
         steering_variance = float(np.var(all_steering))
-        offtrack_ratio = float(np.mean(info['offtrack_ratio'])) if info['offtrack_ratio'] else 0.0
+        mean_speed = float(np.mean(all_speeds))
 
-        return (full_throttle_ratio, steering_variance, offtrack_ratio)
+        return (mean_throttle, steering_variance, mean_speed)
 
     def discretize(self, descriptor):
         bin_id = []

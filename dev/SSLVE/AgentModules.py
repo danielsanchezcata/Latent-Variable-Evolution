@@ -11,7 +11,7 @@ class MLP_Agent:
         output_activation:
             - 'argmax' (discrete)
             - 'tanh' (continuous)
-            - 'car_racing' ([steer, gas, brake] = [tanh, sigmoid, sigmoid])
+            - 'car_racing' ([steer, accel, _] -> [tanh(steer), relu(accel), relu(-accel)])
     """
 
     def __init__(self, architecture, output_activation='argmax'):
@@ -73,8 +73,10 @@ class MLP_Agent:
             if x.shape[0] != 3:
                 raise ValueError("output_activation='car_racing' requires output dim = 3")
             steer = np.tanh(x[0])
-            gas = 1.0 / (1.0 + np.exp(-np.clip(x[1], -30.0, 30.0)))
-            brake = 1.0 / (1.0 + np.exp(-np.clip(x[2], -30.0, 30.0)))
+            # Use a single acceleration channel to avoid persistent gas+brake conflicts.
+            accel = np.tanh(x[1])
+            gas = max(accel, 0.0)
+            brake = max(-accel, 0.0)
             return np.array([steer, gas, brake], dtype=np.float32)
         else:
             return x

@@ -29,19 +29,19 @@ ARCHITECTURE = [8, 64, 64, 3]  # @param
 OUTPUT_ACTIVATION = 'car_racing'  # @param {type:"string"}
 
 # Behavior Descriptor
-BIN_RANGES = [(0.0, 1.0), (0.0, 0.6), (0.0, 1.0)]  # @param
-BIN_SIZES = [12, 12, 12]  # @param
-FULL_THROTTLE_THRESHOLD = 0.95  # @param {type:"number"}
+BIN_RANGES = [(0.0, 1.0), (0.0, 0.6), (0.0, 40.0)]  # @param
+BIN_SIZES = [24, 24, 24]  # @param
 
 # MAP-Elites
-TOP_K = 3  # @param {type:"integer"}
-N_SAMPLES = 120  # @param {type:"integer"}
+TOP_K = 10  # @param {type:"integer"}
+N_SAMPLES = 192  # @param {type:"integer"}
 MUTATION_SIGMA = 0.25  # @param {type:"number"}
 
 # Fitness (to minimize)
 OFFTRACK_PENALTY = 400.0  # @param {type:"number"}
 TRACK_LIMIT_PENALTY = 5.0  # @param {type:"number"}
 INCOMPLETE_LAP_PENALTY = 600.0  # @param {type:"number"}
+REWARD_WEIGHT = 1.0  # @param {type:"number"}
 
 # Latent Module
 LATENT_DIM = 64  # @param {type:"integer"}
@@ -69,11 +69,11 @@ if torch.cuda.is_available():
     torch.set_float32_matmul_precision('high')
 
 if QUICK_EXPERIMENT:
-    MAX_STEPS = 250
-    N_SAMPLES = 24
-    EPOCHS = 20
+    MAX_STEPS = 300
+    N_SAMPLES = 64
+    EPOCHS = 24
     BATCH_SIZE = 128
-    N_STEPS = 4
+    N_STEPS = 8
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -83,13 +83,15 @@ torch.manual_seed(SEED)
 # Setup
 # =============================================================================
 def fitness_fn(info):
+    mean_reward = float(np.mean(info['reward']))
     mean_steps = float(np.mean(info['steps']))
     mean_offtrack_ratio = float(np.mean(info['offtrack_ratio']))
     mean_track_viol = float(np.mean(info['track_limit_violations']))
     mean_completion = float(np.mean(info['lap_completion']))
 
     return (
-        mean_steps
+        -REWARD_WEIGHT * mean_reward
+        + mean_steps
         + OFFTRACK_PENALTY * mean_offtrack_ratio
         + TRACK_LIMIT_PENALTY * mean_track_viol
         + INCOMPLETE_LAP_PENALTY * (1.0 - mean_completion)
@@ -100,7 +102,6 @@ collector = CarRacingCollector(max_steps=MAX_STEPS, n_episodes=N_EPISODES, seed=
 bd = CarRacingBD_v1(
     bin_ranges=BIN_RANGES,
     bin_sizes=BIN_SIZES,
-    full_throttle_threshold=FULL_THROTTLE_THRESHOLD,
 )
 bm = MAPElitesBM(behavior_descriptor=bd, fitness_fn=fitness_fn, top_k=TOP_K)
 
@@ -140,6 +141,8 @@ print(f"Device: {DEVICE}")
 if DEVICE == 'cuda':
     print(f"GPU: {torch.cuda.get_device_name(0)}")
 print(f"Architecture: {ARCHITECTURE}")
+print(f"Bins: {BIN_SIZES} (total={bd.total_bins()})")
+print(f"TOP_K={TOP_K}")
 print(f"Quick mode: {QUICK_EXPERIMENT}")
 print(f"MAX_STEPS={MAX_STEPS}, N_SAMPLES={N_SAMPLES}, EPOCHS={EPOCHS}, N_STEPS={N_STEPS}")
 print()
