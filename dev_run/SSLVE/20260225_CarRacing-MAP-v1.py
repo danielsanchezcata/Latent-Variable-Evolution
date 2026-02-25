@@ -12,6 +12,10 @@ from dev.SSLVE.Collectors import CarRacingCollector
 # =============================================================================
 # Hyperparameters
 # =============================================================================
+# Execution mode
+# QUICK_EXPERIMENT=True is recommended first in Colab.
+QUICK_EXPERIMENT = True  # @param {type:"boolean"}
+
 # CarRacing
 MAX_STEPS = 1000  # @param {type:"integer"}
 N_EPISODES = 1  # @param {type:"integer"}
@@ -40,6 +44,11 @@ INCOMPLETE_LAP_PENALTY = 600.0  # @param {type:"number"}
 
 # General
 SEED = 42  # @param {type:"integer"}
+
+if QUICK_EXPERIMENT:
+    MAX_STEPS = 250
+    N_SAMPLES = 24
+    N_STEPS = 4
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -91,6 +100,9 @@ agent_tmp = MLP_Agent(ARCHITECTURE, output_activation=OUTPUT_ACTIVATION)
 weight_dim = agent_tmp.get_weight_dim()
 print(f"Weight dim: {weight_dim}")
 print(f"Architecture: {ARCHITECTURE}")
+print(f"Quick mode: {QUICK_EXPERIMENT}")
+print(f"MAX_STEPS={MAX_STEPS}, N_SAMPLES={N_SAMPLES}, N_STEPS={N_STEPS}")
+print("Note: MAP baseline rollout/evaluation is CPU-bound (Box2D); GPU has little effect here.")
 print()
 
 me.run(n_steps=N_STEPS)

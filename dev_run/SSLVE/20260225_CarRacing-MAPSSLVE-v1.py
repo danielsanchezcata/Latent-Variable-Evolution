@@ -13,6 +13,11 @@ from dev.SSLVE.LatentModules import BetaVAE_SSLVE
 # =============================================================================
 # Hyperparameters
 # =============================================================================
+# Execution mode
+# QUICK_EXPERIMENT=True is recommended first in Colab to verify everything runs.
+QUICK_EXPERIMENT = True  # @param {type:"boolean"}
+REQUIRE_GPU = True  # @param {type:"boolean"}
+
 # CarRacing
 MAX_STEPS = 1000  # @param {type:"integer"}
 N_EPISODES = 1  # @param {type:"integer"}
@@ -53,6 +58,22 @@ N_STEPS = 20  # @param {type:"integer"}
 # General
 SEED = 42  # @param {type:"integer"}
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+if REQUIRE_GPU and not torch.cuda.is_available():
+    raise RuntimeError(
+        "GPU not detected. In Colab set Runtime -> Change runtime type -> GPU, then rerun."
+    )
+
+if torch.cuda.is_available():
+    torch.backends.cudnn.benchmark = True
+    torch.set_float32_matmul_precision('high')
+
+if QUICK_EXPERIMENT:
+    MAX_STEPS = 250
+    N_SAMPLES = 24
+    EPOCHS = 20
+    BATCH_SIZE = 128
+    N_STEPS = 4
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -116,7 +137,11 @@ sslve = SSLVE(
 print(f"Weight dim: {weight_dim}")
 print(f"Latent dim: {LATENT_DIM}")
 print(f"Device: {DEVICE}")
+if DEVICE == 'cuda':
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
 print(f"Architecture: {ARCHITECTURE}")
+print(f"Quick mode: {QUICK_EXPERIMENT}")
+print(f"MAX_STEPS={MAX_STEPS}, N_SAMPLES={N_SAMPLES}, EPOCHS={EPOCHS}, N_STEPS={N_STEPS}")
 print()
 
 train_kwargs = {
