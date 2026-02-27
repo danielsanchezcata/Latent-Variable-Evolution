@@ -76,7 +76,7 @@ if torch.cuda.is_available():
 
 if QUICK_EXPERIMENT:
     MAX_STEPS = 1000
-    N_SAMPLES = 25
+    N_SAMPLES = 10
     EPOCHS = 25
     BATCH_SIZE = 128
     N_STEPS = 100

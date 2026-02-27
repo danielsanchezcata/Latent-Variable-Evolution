@@ -53,7 +53,7 @@ AUTO_DOWNLOAD_PLOTS_COLAB = True  # @param {type:"boolean"}
 
 if QUICK_EXPERIMENT:
     MAX_STEPS = 1000
-    N_SAMPLES = 25
+    N_SAMPLES = 10
     N_STEPS = 100
 
 random.seed(SEED)
