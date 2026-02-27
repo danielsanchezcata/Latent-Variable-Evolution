@@ -14,10 +14,10 @@ from dev.SSLVE.Collectors import CarRacingCollector
 # =============================================================================
 # Execution mode
 # QUICK_EXPERIMENT=True is recommended first in Colab.
-QUICK_EXPERIMENT = True  # @param {type:"boolean"}
+QUICK_EXPERIMENT = False  # @param {type:"boolean"}
 
 # CarRacing
-MAX_STEPS = 1000  # @param {type:"integer"}
+MAX_STEPS = 600  # @param {type:"integer"}
 N_EPISODES = 1  # @param {type:"integer"}
 
 # Agent Architecture
@@ -27,14 +27,14 @@ ARCHITECTURE = [8, 64, 64, 3]  # @param
 OUTPUT_ACTIVATION = 'car_racing'  # @param {type:"string"}
 
 # Behavior Descriptor
-BIN_RANGES = [(0.0, 1.0), (0.0, 0.6), (0.0, 40.0)]  # @param
-BIN_SIZES = [24, 24, 24]  # @param
+BIN_RANGES = [(0.0, 1.0), (0.0, 0.8), (0.0, 45.0)]  # @param
+BIN_SIZES = [32, 32, 24]  # @param
 
 # MAP-Elites
-TOP_K = 10  # @param {type:"integer"}
-N_SAMPLES = 192  # @param {type:"integer"}
-MUTATION_SIGMA = 0.25  # @param {type:"number"}
-N_STEPS = 20  # @param {type:"integer"}
+TOP_K = 3  # @param {type:"integer"}
+N_SAMPLES = 256  # @param {type:"integer"}
+MUTATION_SIGMA = 0.45  # @param {type:"number"}
+N_STEPS = 40  # @param {type:"integer"}
 
 # Fitness (to minimize)
 OFFTRACK_PENALTY = 400.0  # @param {type:"number"}
@@ -47,8 +47,8 @@ SEED = 42  # @param {type:"integer"}
 
 if QUICK_EXPERIMENT:
     MAX_STEPS = 300
-    N_SAMPLES = 64
-    N_STEPS = 8
+    N_SAMPLES = 96
+    N_STEPS = 12
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -103,6 +103,7 @@ print(f"Weight dim: {weight_dim}")
 print(f"Architecture: {ARCHITECTURE}")
 print(f"Bins: {BIN_SIZES} (total={bd.total_bins()})")
 print(f"TOP_K={TOP_K}")
+print(f"Mutation sigma={MUTATION_SIGMA}")
 print(f"Quick mode: {QUICK_EXPERIMENT}")
 print(f"MAX_STEPS={MAX_STEPS}, N_SAMPLES={N_SAMPLES}, N_STEPS={N_STEPS}")
 print("Note: MAP baseline rollout/evaluation is CPU-bound (Box2D); GPU has little effect here.")
