@@ -65,21 +65,24 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 OUTPUT_DIR = "results/carracing_mapsslve_v1"  # @param {type:"string"}
 AUTO_DOWNLOAD_PLOTS_COLAB = True  # @param {type:"boolean"}
 
-if REQUIRE_GPU and not torch.cuda.is_available():
-    raise RuntimeError(
-        "GPU not detected. In Colab set Runtime -> Change runtime type -> GPU, then rerun."
-    )
-
-if torch.cuda.is_available():
-    torch.backends.cudnn.benchmark = True
-    torch.set_float32_matmul_precision('high')
-
 if QUICK_EXPERIMENT:
+    # Quick mode should run on both CPU and GPU.
+    REQUIRE_GPU = False
     MAX_STEPS = 1000
     N_SAMPLES = 10
     EPOCHS = 25
     BATCH_SIZE = 128
     N_STEPS = 100
+
+if REQUIRE_GPU and not torch.cuda.is_available():
+    raise RuntimeError(
+        "GPU not detected. In Colab set Runtime -> Change runtime type -> GPU, "
+        "or set REQUIRE_GPU=False."
+    )
+
+if torch.cuda.is_available():
+    torch.backends.cudnn.benchmark = True
+    torch.set_float32_matmul_precision('high')
 
 random.seed(SEED)
 np.random.seed(SEED)
