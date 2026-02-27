@@ -158,7 +158,7 @@ class CarRacingBD_v1:
         if bin_ranges is None:
             bin_ranges = [(0.0, 1.0), (0.0, 1.0), (0.0, 0.8), (0.0, 45.0)]
         if bin_sizes is None:
-            bin_sizes = [1000, 1000, 1000, 1000]
+            bin_sizes = [25, 25, 25, 25]
         self.bin_ranges = bin_ranges
         self.bin_sizes = bin_sizes
 

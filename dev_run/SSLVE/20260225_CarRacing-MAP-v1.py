@@ -20,7 +20,7 @@ from dev.SSLVE.Collectors import CarRacingCollector
 QUICK_EXPERIMENT = True  # @param {type:"boolean"}
 
 # CarRacing
-MAX_STEPS = 600  # @param {type:"integer"}
+MAX_STEPS = 300  # @param {type:"integer"}
 N_EPISODES = 1  # @param {type:"integer"}
 
 # Agent Architecture
@@ -31,13 +31,13 @@ OUTPUT_ACTIVATION = 'car_racing'  # @param {type:"string"}
 
 # Behavior Descriptor
 BIN_RANGES = [(0.0, 1.0), (0.0, 1.0), (0.0, 0.8), (0.0, 45.0)]  # @param
-BIN_SIZES = [1000, 1000, 1000, 1000]  # @param
+BIN_SIZES = [25, 25, 25, 25]  # @param
 
 # MAP-Elites
 TOP_K = 3  # @param {type:"integer"}
-N_SAMPLES = 256  # @param {type:"integer"}
-MUTATION_SIGMA = 0.45  # @param {type:"number"}
-N_STEPS = 40  # @param {type:"integer"}
+N_SAMPLES = 200  # @param {type:"integer"}
+MUTATION_SIGMA = 0.3  # @param {type:"number"}
+N_STEPS = 20  # @param {type:"integer"}
 
 # Fitness (to minimize)
 STEP_COST = 1.0  # @param {type:"number"}
@@ -50,9 +50,9 @@ SEED = 42  # @param {type:"integer"}
 OUTPUT_DIR = "results/carracing_map_v1"  # @param {type:"string"}
 
 if QUICK_EXPERIMENT:
-    MAX_STEPS = 300
-    N_SAMPLES = 96
-    N_STEPS = 12
+    MAX_STEPS = 100
+    N_SAMPLES = 50
+    N_STEPS = 10
 
 random.seed(SEED)
 np.random.seed(SEED)
