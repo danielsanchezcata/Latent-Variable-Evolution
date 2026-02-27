@@ -30,8 +30,8 @@ ARCHITECTURE = [8, 64, 64, 3]  # @param
 OUTPUT_ACTIVATION = 'car_racing'  # @param {type:"string"}
 
 # Behavior Descriptor
-BIN_RANGES = [(0.0, 1.0), (0.0, 0.8), (0.0, 45.0)]  # @param
-BIN_SIZES = [32, 32, 24]  # @param
+BIN_RANGES = [(0.0, 1.0), (0.0, 1.0), (0.0, 0.8), (0.0, 45.0)]  # @param
+BIN_SIZES = [1000, 1000, 1000, 1000]  # @param
 
 # MAP-Elites
 TOP_K = 3  # @param {type:"integer"}
@@ -40,10 +40,10 @@ MUTATION_SIGMA = 0.45  # @param {type:"number"}
 N_STEPS = 40  # @param {type:"integer"}
 
 # Fitness (to minimize)
-OFFTRACK_PENALTY = 400.0  # @param {type:"number"}
-TRACK_LIMIT_PENALTY = 5.0  # @param {type:"number"}
-INCOMPLETE_LAP_PENALTY = 600.0  # @param {type:"number"}
-REWARD_WEIGHT = 1.0  # @param {type:"number"}
+STEP_COST = 1.0  # @param {type:"number"}
+TRACK_LIMIT_PENALTY = 25.0  # @param {type:"number"}
+COMPLETION_REWARD = 1200.0  # @param {type:"number"}
+INCOMPLETE_LAP_PENALTY = 1200.0  # @param {type:"number"}
 
 # General
 SEED = 42  # @param {type:"integer"}
@@ -63,19 +63,20 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Setup
 # =============================================================================
 def fitness_fn(info):
-    mean_reward = float(np.mean(info['reward']))
     mean_steps = float(np.mean(info['steps']))
-    mean_offtrack_ratio = float(np.mean(info['offtrack_ratio']))
     mean_track_viol = float(np.mean(info['track_limit_violations']))
     mean_completion = float(np.mean(info['lap_completion']))
 
-    return (
-        -REWARD_WEIGHT * mean_reward
-        + mean_steps
-        + OFFTRACK_PENALTY * mean_offtrack_ratio
-        + TRACK_LIMIT_PENALTY * mean_track_viol
-        + INCOMPLETE_LAP_PENALTY * (1.0 - mean_completion)
+    # Reward-shaped objective:
+    # + completion reward, - step cost, - track-limit penalties, - incomplete-lap penalty.
+    reward_score = (
+        COMPLETION_REWARD * mean_completion
+        - STEP_COST * mean_steps
+        - TRACK_LIMIT_PENALTY * mean_track_viol
+        - INCOMPLETE_LAP_PENALTY * (1.0 - mean_completion)
     )
+    # MAPElitesBM minimizes fitness, so negate reward.
+    return -reward_score
 
 
 def plot_map_training_summary(history, save_path):

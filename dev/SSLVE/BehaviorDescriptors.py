@@ -146,8 +146,8 @@ class CartPoleBD_v1:
 
 class CarRacingBD_v1:
     """
-    3D behavior descriptor for CarRacing:
-    (mean_throttle, steering_variance, mean_speed)
+    4D behavior descriptor for CarRacing:
+    (mean_throttle, mean_brake, steering_variance, max_speed)
 
     Args:
         bin_ranges: list of (min, max) per dimension
@@ -156,9 +156,9 @@ class CarRacingBD_v1:
 
     def __init__(self, bin_ranges=None, bin_sizes=None):
         if bin_ranges is None:
-            bin_ranges = [(0.0, 1.0), (0.0, 0.6), (0.0, 40.0)]
+            bin_ranges = [(0.0, 1.0), (0.0, 1.0), (0.0, 0.8), (0.0, 45.0)]
         if bin_sizes is None:
-            bin_sizes = [20, 20, 20]
+            bin_sizes = [1000, 1000, 1000, 1000]
         self.bin_ranges = bin_ranges
         self.bin_sizes = bin_sizes
 
@@ -168,17 +168,19 @@ class CarRacingBD_v1:
             info: dict from CarRacingCollector.collect()
 
         Returns:
-            (mean_throttle, steering_variance, mean_speed)
+            (mean_throttle, mean_brake, steering_variance, max_speed)
         """
         all_throttle = np.concatenate(info['throttle']) if info['throttle'] else np.array([0.0])
+        all_brake = np.concatenate(info['brake']) if info['brake'] else np.array([0.0])
         all_steering = np.concatenate(info['steering']) if info['steering'] else np.array([0.0])
         all_speeds = np.concatenate(info['speeds']) if info['speeds'] else np.array([0.0])
 
         mean_throttle = float(np.mean(all_throttle))
+        mean_brake = float(np.mean(all_brake))
         steering_variance = float(np.var(all_steering))
-        mean_speed = float(np.mean(all_speeds))
+        max_speed = float(np.max(all_speeds))
 
-        return (mean_throttle, steering_variance, mean_speed)
+        return (mean_throttle, mean_brake, steering_variance, max_speed)
 
     def discretize(self, descriptor):
         bin_id = []
