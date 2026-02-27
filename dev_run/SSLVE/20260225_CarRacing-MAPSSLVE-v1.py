@@ -3,6 +3,7 @@ import random
 import torch
 import time
 import os
+import zipfile
 import matplotlib.pyplot as plt
 
 from dev.SSLVE.Main import SSLVE
@@ -62,6 +63,7 @@ N_STEPS = 20  # @param {type:"integer"}
 SEED = 42  # @param {type:"integer"}
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 OUTPUT_DIR = "results/carracing_mapsslve_v1"  # @param {type:"string"}
+AUTO_DOWNLOAD_PLOTS_COLAB = True  # @param {type:"boolean"}
 
 if REQUIRE_GPU and not torch.cuda.is_available():
     raise RuntimeError(
@@ -189,6 +191,27 @@ def plot_sslve_lm_last_epoch_curve(histories, save_path):
     plt.savefig(save_path, bbox_inches='tight')
     plt.close()
 
+def _download_plots_if_colab(plot_paths, zip_filename):
+    if not AUTO_DOWNLOAD_PLOTS_COLAB:
+        return
+
+    try:
+        from google.colab import files as colab_files
+    except Exception:
+        return
+
+    existing_paths = [p for p in plot_paths if os.path.exists(p)]
+    if not existing_paths:
+        return
+
+    zip_path = os.path.join(OUTPUT_DIR, zip_filename)
+    with zipfile.ZipFile(zip_path, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+        for p in existing_paths:
+            zf.write(p, arcname=os.path.basename(p))
+
+    print(f"Downloading plots to local machine: {zip_path}")
+    colab_files.download(zip_path)
+
 
 collector = CarRacingCollector(max_steps=MAX_STEPS, n_episodes=N_EPISODES, seed=SEED)
 bd = CarRacingBD_v1(
@@ -275,3 +298,7 @@ plot_sslve_lm_last_epoch_curve(histories, lm_epoch_plot_path)
 print(f"Saved plot: {main_plot_path}")
 print(f"Saved plot: {lm_step_plot_path}")
 print(f"Saved plot: {lm_epoch_plot_path}")
+_download_plots_if_colab(
+    [main_plot_path, lm_step_plot_path, lm_epoch_plot_path],
+    zip_filename="carracing_mapsslve_v1_plots.zip",
+)

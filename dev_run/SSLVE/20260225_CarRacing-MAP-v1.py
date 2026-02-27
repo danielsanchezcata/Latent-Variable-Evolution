@@ -3,6 +3,7 @@ import random
 import torch
 import time
 import os
+import zipfile
 import matplotlib.pyplot as plt
 
 from dev.SSLVE.Main import MAPElite
@@ -48,6 +49,7 @@ INCOMPLETE_LAP_PENALTY = 1200.0  # @param {type:"number"}
 # General
 SEED = 42  # @param {type:"integer"}
 OUTPUT_DIR = "results/carracing_map_v1"  # @param {type:"string"}
+AUTO_DOWNLOAD_PLOTS_COLAB = True  # @param {type:"boolean"}
 
 if QUICK_EXPERIMENT:
     MAX_STEPS = 100
@@ -107,6 +109,27 @@ def plot_map_training_summary(history, save_path):
     plt.tight_layout()
     plt.savefig(save_path, bbox_inches='tight')
     plt.close()
+
+def _download_plots_if_colab(plot_paths, zip_filename):
+    if not AUTO_DOWNLOAD_PLOTS_COLAB:
+        return
+
+    try:
+        from google.colab import files as colab_files
+    except Exception:
+        return
+
+    existing_paths = [p for p in plot_paths if os.path.exists(p)]
+    if not existing_paths:
+        return
+
+    zip_path = os.path.join(OUTPUT_DIR, zip_filename)
+    with zipfile.ZipFile(zip_path, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+        for p in existing_paths:
+            zf.write(p, arcname=os.path.basename(p))
+
+    print(f"Downloading plots to local machine: {zip_path}")
+    colab_files.download(zip_path)
 
 
 collector = CarRacingCollector(max_steps=MAX_STEPS, n_episodes=N_EPISODES, seed=SEED)
@@ -170,3 +193,7 @@ me.plot_history(save_path=main_plot_path)
 plot_map_training_summary(me.history, extra_plot_path)
 print(f"Saved plot: {main_plot_path}")
 print(f"Saved plot: {extra_plot_path}")
+_download_plots_if_colab(
+    [main_plot_path, extra_plot_path],
+    zip_filename="carracing_map_v1_plots.zip",
+)
