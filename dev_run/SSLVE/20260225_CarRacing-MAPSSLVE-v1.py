@@ -74,10 +74,10 @@ if torch.cuda.is_available():
 
 if QUICK_EXPERIMENT:
     MAX_STEPS = 100
-    N_SAMPLES = 50
+    N_SAMPLES = 100
     EPOCHS = 25
     BATCH_SIZE = 128
-    N_STEPS = 10
+    N_STEPS = 100
 
 random.seed(SEED)
 np.random.seed(SEED)

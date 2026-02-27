@@ -51,8 +51,8 @@ OUTPUT_DIR = "results/carracing_map_v1"  # @param {type:"string"}
 
 if QUICK_EXPERIMENT:
     MAX_STEPS = 100
-    N_SAMPLES = 50
-    N_STEPS = 10
+    N_SAMPLES = 100
+    N_STEPS = 100
 
 random.seed(SEED)
 np.random.seed(SEED)
