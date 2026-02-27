@@ -35,7 +35,7 @@ BIN_RANGES = [(-1.0, 1.0), (0.0, 0.8), (0.0, 1.5)]  # @param
 BIN_SIZES = [15, 15, 15]  # @param
 
 # MAP-Elites
-TOP_K = 3  # @param {type:"integer"}
+TOP_K = 1 # @param {type:"integer"}
 N_SAMPLES = 200  # @param {type:"integer"}
 MUTATION_SIGMA = 0.3  # @param {type:"number"}
 N_STEPS = 20  # @param {type:"integer"}
