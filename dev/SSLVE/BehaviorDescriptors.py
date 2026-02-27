@@ -199,6 +199,61 @@ class CarRacingBD_v1:
 
 
 
+class CarRacingBD_v2:
+    """
+    3D behavior descriptor for CarRacing:
+    (throttle_brake_balance, steering_variance, abs_slip_p90)
+
+    Args:
+        bin_ranges: list of (min, max) per dimension
+        bin_sizes: list of number of bins per dimension
+    """
+
+    def __init__(self, bin_ranges=None, bin_sizes=None):
+        if bin_ranges is None:
+            # balance in [-1, 1], steering variance in [0, 1], slip in radians
+            bin_ranges = [(-1.0, 1.0), (0.0, 0.8), (0.0, 1.5)]
+        if bin_sizes is None:
+            bin_sizes = [15, 15, 15]
+        self.bin_ranges = bin_ranges
+        self.bin_sizes = bin_sizes
+
+    def describe(self, info):
+        """
+        Args:
+            info: dict from CarRacingCollector.collect()
+
+        Returns:
+            (throttle_brake_balance, steering_variance, abs_slip_p90)
+        """
+        all_throttle = np.concatenate(info['throttle']) if info['throttle'] else np.array([0.0])
+        all_brake = np.concatenate(info['brake']) if info['brake'] else np.array([0.0])
+        all_steering = np.concatenate(info['steering']) if info['steering'] else np.array([0.0])
+        all_slip = np.concatenate(info['slip_angles']) if info['slip_angles'] else np.array([0.0])
+
+        throttle_brake_balance = float(np.mean(all_throttle) - np.mean(all_brake))
+        steering_variance = float(np.var(all_steering))
+        abs_slip_p90 = float(np.percentile(np.abs(all_slip), 90))
+
+        return (throttle_brake_balance, steering_variance, abs_slip_p90)
+
+    def discretize(self, descriptor):
+        bin_id = []
+        for val, (lo, hi), n_bins in zip(descriptor, self.bin_ranges, self.bin_sizes):
+            clamped = np.clip(val, lo, hi)
+            idx = int((clamped - lo) / (hi - lo) * n_bins)
+            idx = min(idx, n_bins - 1)
+            bin_id.append(idx)
+        return tuple(bin_id)
+
+    def total_bins(self):
+        result = 1
+        for n in self.bin_sizes:
+            result *= n
+        return result
+
+
+
 class PlanarArmBD_CVT:
     """
     CVT-based behavior descriptor for planar arm.

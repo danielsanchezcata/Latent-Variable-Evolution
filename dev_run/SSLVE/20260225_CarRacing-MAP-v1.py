@@ -10,7 +10,7 @@ from dev.SSLVE.Main import MAPElite
 from dev.SSLVE.SearchPhases import UniBinUniMemPSE
 from dev.SSLVE.AgentModules import MLP_Agent
 from dev.SSLVE.BehaviorMatchings import MAPElitesBM
-from dev.SSLVE.BehaviorDescriptors import CarRacingBD_v1
+from dev.SSLVE.BehaviorDescriptors import CarRacingBD_v2
 from dev.SSLVE.Collectors import CarRacingCollector
 
 # =============================================================================
@@ -30,9 +30,9 @@ N_EPISODES = 1  # @param {type:"integer"}
 ARCHITECTURE = [8, 64, 64, 3]  # @param
 OUTPUT_ACTIVATION = 'car_racing'  # @param {type:"string"}
 
-# Behavior Descriptor
-BIN_RANGES = [(0.0, 1.0), (0.0, 1.0), (0.0, 0.8), (0.0, 45.0)]  # @param
-BIN_SIZES = [25, 25, 25, 25]  # @param
+# Behavior Descriptor (3D): (throttle_brake_balance, steering_variance, abs_slip_p90)
+BIN_RANGES = [(-1.0, 1.0), (0.0, 0.8), (0.0, 1.5)]  # @param
+BIN_SIZES = [15, 15, 15]  # @param
 
 # MAP-Elites
 TOP_K = 3  # @param {type:"integer"}
@@ -133,7 +133,7 @@ def _download_plots_if_colab(plot_paths, zip_filename):
 
 
 collector = CarRacingCollector(max_steps=MAX_STEPS, n_episodes=N_EPISODES, seed=SEED)
-bd = CarRacingBD_v1(
+bd = CarRacingBD_v2(
     bin_ranges=BIN_RANGES,
     bin_sizes=BIN_SIZES,
 )
