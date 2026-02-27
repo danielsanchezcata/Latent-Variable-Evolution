@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import gymnasium as gym
+import time
 
 
 class Collector(ABC):
@@ -177,7 +178,8 @@ class CarRacingCollector:
 
     def __init__(self, max_steps=1000, n_episodes=1, seed=None,
                  lookahead_points=8, speed_scale=40.0,
-                 angular_velocity_scale=8.0, centerline_norm=8.0):
+                 angular_velocity_scale=8.0, centerline_norm=8.0,
+                 enable_timing=True):
         self.max_steps = max_steps
         self.n_episodes = n_episodes
         self.seed = seed
@@ -185,6 +187,16 @@ class CarRacingCollector:
         self.speed_scale = speed_scale
         self.angular_velocity_scale = angular_velocity_scale
         self.centerline_norm = centerline_norm
+        self.enable_timing = enable_timing
+
+        # Aggregated rollout timing stats over all collect() calls.
+        self._timing = {
+            'collect_calls': 0,
+            'total_rollout_steps': 0,
+            'total_rollout_time_sec': 0.0,
+            'last_collect_steps': 0,
+            'last_collect_time_sec': 0.0,
+        }
 
     def _wrap_angle(self, angle):
         return (angle + np.pi) % (2.0 * np.pi) - np.pi
@@ -288,6 +300,8 @@ class CarRacingCollector:
                 'track_limit_violations': list of ints
                 'lap_completion': list of floats in [0, 1]
         """
+        t0 = time.perf_counter() if self.enable_timing else None
+
         info = {
             'reward': [],
             'steps': [],
@@ -398,7 +412,45 @@ class CarRacingCollector:
 
             env.close()
 
+        if self.enable_timing:
+            elapsed = time.perf_counter() - t0
+            rollout_steps = int(np.sum(info['steps']))
+
+            self._timing['collect_calls'] += 1
+            self._timing['total_rollout_steps'] += rollout_steps
+            self._timing['total_rollout_time_sec'] += float(elapsed)
+            self._timing['last_collect_steps'] = rollout_steps
+            self._timing['last_collect_time_sec'] = float(elapsed)
+
+            info['rollout_time_sec'] = float(elapsed)
+            info['rollout_steps'] = rollout_steps
+            info['steps_per_sec'] = float(rollout_steps / max(elapsed, 1e-12))
+
         return info
+
+    def get_timing_stats(self):
+        """
+        Return aggregated rollout timing stats across all collect() calls.
+        """
+        total_steps = int(self._timing['total_rollout_steps'])
+        total_time = float(self._timing['total_rollout_time_sec'])
+        last_steps = int(self._timing['last_collect_steps'])
+        last_time = float(self._timing['last_collect_time_sec'])
+
+        avg_sps = total_steps / total_time if total_time > 0 else 0.0
+        last_sps = last_steps / last_time if last_time > 0 else 0.0
+
+        return {
+            'collect_calls': int(self._timing['collect_calls']),
+            'total_rollout_steps': total_steps,
+            'total_rollout_time_sec': total_time,
+            'avg_steps_per_sec': float(avg_sps),
+            'avg_sec_per_100_steps': float(100.0 / avg_sps) if avg_sps > 0 else None,
+            'avg_sec_per_1000_steps': float(1000.0 / avg_sps) if avg_sps > 0 else None,
+            'last_collect_steps': last_steps,
+            'last_collect_time_sec': last_time,
+            'last_steps_per_sec': float(last_sps),
+        }
 
 
 

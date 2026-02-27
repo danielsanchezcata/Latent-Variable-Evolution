@@ -60,6 +60,20 @@ class SSLVE:
             info = self.CO.collect(agent)
             infos.append(info)
 
+        rollout_steps = 0
+        rollout_time_sec = 0.0
+        for info in infos:
+            rollout_steps += int(info.get('rollout_steps', sum(info.get('steps', []))))
+            rollout_time_sec += float(info.get('rollout_time_sec', 0.0))
+
+        if rollout_steps > 0 and rollout_time_sec > 0:
+            sps = rollout_steps / rollout_time_sec
+            print(
+                f"Rollout timing: {rollout_steps} env-steps in {rollout_time_sec:.2f}s "
+                f"({sps:.1f} steps/s | 100 steps: {100.0 / sps:.2f}s | "
+                f"1000 steps: {1000.0 / sps:.2f}s)"
+            )
+
         # Update archive
         self.BM.update(thetas, infos)
 
@@ -187,6 +201,20 @@ class MAPElite:
             agent = self.SP.make_agent(theta)
             info = self.CO.collect(agent)
             infos.append(info)
+
+        rollout_steps = 0
+        rollout_time_sec = 0.0
+        for info in infos:
+            rollout_steps += int(info.get('rollout_steps', sum(info.get('steps', []))))
+            rollout_time_sec += float(info.get('rollout_time_sec', 0.0))
+
+        if rollout_steps > 0 and rollout_time_sec > 0:
+            sps = rollout_steps / rollout_time_sec
+            print(
+                f"Rollout timing: {rollout_steps} env-steps in {rollout_time_sec:.2f}s "
+                f"({sps:.1f} steps/s | 100 steps: {100.0 / sps:.2f}s | "
+                f"1000 steps: {1000.0 / sps:.2f}s)"
+            )
 
         self.BM.update(thetas, infos)
 

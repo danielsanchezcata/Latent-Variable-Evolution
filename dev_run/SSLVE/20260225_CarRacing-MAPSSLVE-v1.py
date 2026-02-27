@@ -278,6 +278,23 @@ histories = sslve.run(n_steps=N_STEPS, train_kwargs=train_kwargs)
 elapsed = time.perf_counter() - t0
 print(f"\nTotal runtime: {elapsed / 60.0:.2f} min ({elapsed:.1f} sec)")
 
+timing = collector.get_timing_stats()
+if timing['total_rollout_steps'] > 0 and timing['total_rollout_time_sec'] > 0:
+    print(
+        f"Rollout summary: {timing['total_rollout_steps']} env-steps in "
+        f"{timing['total_rollout_time_sec']:.2f}s "
+        f"({timing['avg_steps_per_sec']:.1f} steps/s)"
+    )
+    print(
+        f"Observed cost: {timing['avg_sec_per_100_steps']:.2f}s per 100 steps | "
+        f"{timing['avg_sec_per_1000_steps']:.2f}s per 1000 steps"
+    )
+    est_budget_sec = max_rollout_steps / timing['avg_steps_per_sec']
+    print(
+        f"Estimated rollout-only time for max budget ({max_rollout_steps} steps): "
+        f"{est_budget_sec / 60.0:.2f} min ({est_budget_sec:.1f} sec)"
+    )
+
 # =============================================================================
 # Results
 # =============================================================================
