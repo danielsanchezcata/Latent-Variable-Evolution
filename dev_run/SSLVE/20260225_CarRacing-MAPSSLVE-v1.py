@@ -23,7 +23,7 @@ QUICK_EXPERIMENT = True  # @param {type:"boolean"}
 REQUIRE_GPU = True  # @param {type:"boolean"}
 
 # CarRacing
-MAX_STEPS = 300  # @param {type:"integer"}
+MAX_STEPS = 2000  # @param {type:"integer"}
 N_EPISODES = 1  # @param {type:"integer"}
 
 # Agent Architecture
@@ -75,8 +75,8 @@ if torch.cuda.is_available():
     torch.set_float32_matmul_precision('high')
 
 if QUICK_EXPERIMENT:
-    MAX_STEPS = 100
-    N_SAMPLES = 100
+    MAX_STEPS = 1000
+    N_SAMPLES = 25
     EPOCHS = 25
     BATCH_SIZE = 128
     N_STEPS = 100

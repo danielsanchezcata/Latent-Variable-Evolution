@@ -21,7 +21,7 @@ from dev.SSLVE.Collectors import CarRacingCollector
 QUICK_EXPERIMENT = True  # @param {type:"boolean"}
 
 # CarRacing
-MAX_STEPS = 300  # @param {type:"integer"}
+MAX_STEPS = 2000  # @param {type:"integer"}
 N_EPISODES = 1  # @param {type:"integer"}
 
 # Agent Architecture
@@ -52,8 +52,8 @@ OUTPUT_DIR = "results/carracing_map_v1"  # @param {type:"string"}
 AUTO_DOWNLOAD_PLOTS_COLAB = True  # @param {type:"boolean"}
 
 if QUICK_EXPERIMENT:
-    MAX_STEPS = 100
-    N_SAMPLES = 100
+    MAX_STEPS = 1000
+    N_SAMPLES = 25
     N_STEPS = 100
 
 random.seed(SEED)
