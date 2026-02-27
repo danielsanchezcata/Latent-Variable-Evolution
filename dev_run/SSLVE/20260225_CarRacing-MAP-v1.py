@@ -17,7 +17,7 @@ from dev.SSLVE.Collectors import CarRacingCollector
 # =============================================================================
 # Execution mode
 # QUICK_EXPERIMENT=True is recommended first in Colab.
-QUICK_EXPERIMENT = False  # @param {type:"boolean"}
+QUICK_EXPERIMENT = True  # @param {type:"boolean"}
 
 # CarRacing
 MAX_STEPS = 600  # @param {type:"integer"}

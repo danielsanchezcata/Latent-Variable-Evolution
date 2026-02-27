@@ -18,7 +18,7 @@ from dev.SSLVE.LatentModules import BetaVAE_SSLVE
 # =============================================================================
 # Execution mode
 # QUICK_EXPERIMENT=True is recommended first in Colab to verify everything runs.
-QUICK_EXPERIMENT = False  # @param {type:"boolean"}
+QUICK_EXPERIMENT = True  # @param {type:"boolean"}
 REQUIRE_GPU = True  # @param {type:"boolean"}
 
 # CarRacing
