@@ -39,6 +39,7 @@ TOP_K = 1 # @param {type:"integer"}
 N_SAMPLES = 200  # @param {type:"integer"}
 MUTATION_SIGMA = 0.3  # @param {type:"number"}
 N_STEPS = 20  # @param {type:"integer"}
+N_WORKERS = 4  # @param {type:"integer"}
 
 # Fitness (to minimize)
 STEP_COST = 1.0  # @param {type:"number"}
@@ -55,6 +56,7 @@ if QUICK_EXPERIMENT:
     MAX_STEPS = 1000
     N_SAMPLES = 10
     N_STEPS = 100
+    N_WORKERS = max(1, min(8, os.cpu_count() or 1))
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -151,6 +153,7 @@ me = MAPElite(
     search_phase=sp,
     collector=collector,
     behavior_matching=bm,
+    n_workers=N_WORKERS,
 )
 
 # =============================================================================
@@ -163,6 +166,7 @@ print(f"Architecture: {ARCHITECTURE}")
 print(f"Bins: {BIN_SIZES} (total={bd.total_bins()})")
 print(f"TOP_K={TOP_K}")
 print(f"Mutation sigma={MUTATION_SIGMA}")
+print(f"Rollout workers={N_WORKERS}")
 print(f"Quick mode: {QUICK_EXPERIMENT}")
 print(f"MAX_STEPS={MAX_STEPS}, N_SAMPLES={N_SAMPLES}, N_STEPS={N_STEPS}")
 print("Note: MAP baseline rollout/evaluation is CPU-bound (Box2D); GPU has little effect here.")

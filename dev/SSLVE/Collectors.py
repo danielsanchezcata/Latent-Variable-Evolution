@@ -198,6 +198,13 @@ class CarRacingCollector:
             'last_collect_time_sec': 0.0,
         }
 
+    def _accumulate_timing(self, rollout_steps, elapsed):
+        self._timing['collect_calls'] += 1
+        self._timing['total_rollout_steps'] += int(rollout_steps)
+        self._timing['total_rollout_time_sec'] += float(elapsed)
+        self._timing['last_collect_steps'] = int(rollout_steps)
+        self._timing['last_collect_time_sec'] = float(elapsed)
+
     def _wrap_angle(self, angle):
         return (angle + np.pi) % (2.0 * np.pi) - np.pi
 
@@ -416,17 +423,26 @@ class CarRacingCollector:
             elapsed = time.perf_counter() - t0
             rollout_steps = int(np.sum(info['steps']))
 
-            self._timing['collect_calls'] += 1
-            self._timing['total_rollout_steps'] += rollout_steps
-            self._timing['total_rollout_time_sec'] += float(elapsed)
-            self._timing['last_collect_steps'] = rollout_steps
-            self._timing['last_collect_time_sec'] = float(elapsed)
+            self._accumulate_timing(rollout_steps, elapsed)
 
             info['rollout_time_sec'] = float(elapsed)
             info['rollout_steps'] = rollout_steps
             info['steps_per_sec'] = float(rollout_steps / max(elapsed, 1e-12))
 
         return info
+
+    def record_infos_timing(self, infos):
+        """
+        Merge timing from rollout infos (useful when collect() runs in worker processes).
+        """
+        if not self.enable_timing:
+            return
+        for info in infos:
+            if 'rollout_time_sec' not in info:
+                continue
+            rollout_steps = int(info.get('rollout_steps', np.sum(info.get('steps', []))))
+            elapsed = float(info['rollout_time_sec'])
+            self._accumulate_timing(rollout_steps, elapsed)
 
     def get_timing_stats(self):
         """

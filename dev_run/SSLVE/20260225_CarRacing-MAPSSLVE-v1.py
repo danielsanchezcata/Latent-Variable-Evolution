@@ -58,6 +58,7 @@ LR = 1e-3  # @param {type:"number"}
 
 # SSLVE
 N_STEPS = 20  # @param {type:"integer"}
+N_WORKERS = 4  # @param {type:"integer"}
 
 # General
 SEED = 42  # @param {type:"integer"}
@@ -73,6 +74,7 @@ if QUICK_EXPERIMENT:
     EPOCHS = 25
     BATCH_SIZE = 128
     N_STEPS = 100
+    N_WORKERS = max(1, min(8, os.cpu_count() or 1))
 
 if REQUIRE_GPU and not torch.cuda.is_available():
     raise RuntimeError(
@@ -248,6 +250,7 @@ sslve = SSLVE(
     behavior_matching=bm,
     latent_module=lm,
     device=DEVICE,
+    n_workers=N_WORKERS,
 )
 
 # =============================================================================
@@ -262,6 +265,7 @@ print(f"Architecture: {ARCHITECTURE}")
 print(f"Bins: {BIN_SIZES} (total={bd.total_bins()})")
 print(f"TOP_K={TOP_K}")
 print(f"Mutation sigma={MUTATION_SIGMA}")
+print(f"Rollout workers={N_WORKERS}")
 print(f"Quick mode: {QUICK_EXPERIMENT}")
 print(f"MAX_STEPS={MAX_STEPS}, N_SAMPLES={N_SAMPLES}, EPOCHS={EPOCHS}, N_STEPS={N_STEPS}")
 print(f"Plot output dir: {OUTPUT_DIR}")

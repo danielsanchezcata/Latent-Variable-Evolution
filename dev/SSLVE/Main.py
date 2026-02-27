@@ -1,4 +1,25 @@
 import matplotlib.pyplot as plt
+from concurrent.futures import ProcessPoolExecutor
+
+
+_WORKER_SP = None
+_WORKER_CO = None
+
+
+def _init_collect_worker(search_phase, collector):
+    global _WORKER_SP, _WORKER_CO
+    _WORKER_SP = search_phase
+    _WORKER_CO = collector
+
+
+def _collect_worker(theta):
+    """
+    Worker for parallel rollout evaluation.
+    Args:
+        theta: parameter vector
+    """
+    agent = _WORKER_SP.make_agent(theta)
+    return _WORKER_CO.collect(agent)
 
 
 class SSLVE:
@@ -15,12 +36,14 @@ class SSLVE:
         device: 'cpu' or 'cuda'
     """
 
-    def __init__(self, search_phase, collector, behavior_matching, latent_module, device='cpu'):
+    def __init__(self, search_phase, collector, behavior_matching, latent_module,
+                 device='cpu', n_workers=1):
         self.SP = search_phase
         self.CO = collector
         self.BM = behavior_matching
         self.LM = latent_module
         self.device = device
+        self.n_workers = max(1, int(n_workers))
         self.history = {
             'fitness_min': [],
             'fitness_mean': [],
@@ -29,7 +52,7 @@ class SSLVE:
             'archive_size': [],
         }
 
-    def step(self, train_kwargs=None):
+    def step(self, train_kwargs=None, executor=None):
         """
         One SSLVE iteration:
         1. SP generates thetas
@@ -54,11 +77,17 @@ class SSLVE:
         )
 
         # Collect
-        infos = []
-        for theta in thetas:
-            agent = self.SP.make_agent(theta)
-            info = self.CO.collect(agent)
-            infos.append(info)
+        if executor is None:
+            infos = []
+            for theta in thetas:
+                agent = self.SP.make_agent(theta)
+                info = self.CO.collect(agent)
+                infos.append(info)
+        else:
+            chunksize = max(1, len(thetas) // (self.n_workers * 4))
+            infos = list(executor.map(_collect_worker, thetas, chunksize=chunksize))
+            if hasattr(self.CO, 'record_infos_timing'):
+                self.CO.record_infos_timing(infos)
 
         rollout_steps = 0
         rollout_time_sec = 0.0
@@ -112,10 +141,22 @@ class SSLVE:
             list of loss histories
         """
         histories = []
-        for t in range(n_steps):
-            print(f"\n--- SSLVE Step {t+1}/{n_steps} ---")
-            history = self.step(train_kwargs)
-            histories.append(history)
+        if self.n_workers > 1:
+            print(f"Parallel rollout workers: {self.n_workers}")
+            with ProcessPoolExecutor(
+                max_workers=self.n_workers,
+                initializer=_init_collect_worker,
+                initargs=(self.SP, self.CO),
+            ) as executor:
+                for t in range(n_steps):
+                    print(f"\n--- SSLVE Step {t+1}/{n_steps} ---")
+                    history = self.step(train_kwargs, executor=executor)
+                    histories.append(history)
+        else:
+            for t in range(n_steps):
+                print(f"\n--- SSLVE Step {t+1}/{n_steps} ---")
+                history = self.step(train_kwargs)
+                histories.append(history)
         return histories
 
     def plot_history(self, save_path=None):
@@ -172,10 +213,11 @@ class MAPElite:
         behavior_matching (BM): manages archive with behavior descriptors
     """
 
-    def __init__(self, search_phase, collector, behavior_matching):
+    def __init__(self, search_phase, collector, behavior_matching, n_workers=1):
         self.SP = search_phase
         self.CO = collector
         self.BM = behavior_matching
+        self.n_workers = max(1, int(n_workers))
         self.history = {
             'fitness_min': [],
             'fitness_mean': [],
@@ -184,7 +226,7 @@ class MAPElite:
             'archive_size': [],
         }
 
-    def step(self):
+    def step(self, executor=None):
         """
         One MAP-Elite iteration:
         1. SP generates thetas
@@ -196,11 +238,17 @@ class MAPElite:
             behavior_matching=self.BM,
         )
 
-        infos = []
-        for theta in thetas:
-            agent = self.SP.make_agent(theta)
-            info = self.CO.collect(agent)
-            infos.append(info)
+        if executor is None:
+            infos = []
+            for theta in thetas:
+                agent = self.SP.make_agent(theta)
+                info = self.CO.collect(agent)
+                infos.append(info)
+        else:
+            chunksize = max(1, len(thetas) // (self.n_workers * 4))
+            infos = list(executor.map(_collect_worker, thetas, chunksize=chunksize))
+            if hasattr(self.CO, 'record_infos_timing'):
+                self.CO.record_infos_timing(infos)
 
         rollout_steps = 0
         rollout_time_sec = 0.0
@@ -237,9 +285,20 @@ class MAPElite:
         Args:
             n_steps: number of iterations
         """
-        for t in range(n_steps):
-            print(f"\n--- MAP-Elite Step {t+1}/{n_steps} ---")
-            self.step()
+        if self.n_workers > 1:
+            print(f"Parallel rollout workers: {self.n_workers}")
+            with ProcessPoolExecutor(
+                max_workers=self.n_workers,
+                initializer=_init_collect_worker,
+                initargs=(self.SP, self.CO),
+            ) as executor:
+                for t in range(n_steps):
+                    print(f"\n--- MAP-Elite Step {t+1}/{n_steps} ---")
+                    self.step(executor=executor)
+        else:
+            for t in range(n_steps):
+                print(f"\n--- MAP-Elite Step {t+1}/{n_steps} ---")
+                self.step()
 
     def plot_history(self, save_path=None):
         if not self.history['fitness_min']:
