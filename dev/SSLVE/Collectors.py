@@ -194,16 +194,21 @@ class CarRacingCollector:
             'collect_calls': 0,
             'total_rollout_steps': 0,
             'total_rollout_time_sec': 0.0,
+            'total_rollout_wall_time_sec': 0.0,
             'last_collect_steps': 0,
             'last_collect_time_sec': 0.0,
+            'last_collect_wall_time_sec': 0.0,
         }
 
-    def _accumulate_timing(self, rollout_steps, elapsed):
+    def _accumulate_timing(self, rollout_steps, elapsed, wall_time_sec=None):
+        wall = float(elapsed) if wall_time_sec is None else float(wall_time_sec)
         self._timing['collect_calls'] += 1
         self._timing['total_rollout_steps'] += int(rollout_steps)
         self._timing['total_rollout_time_sec'] += float(elapsed)
+        self._timing['total_rollout_wall_time_sec'] += wall
         self._timing['last_collect_steps'] = int(rollout_steps)
         self._timing['last_collect_time_sec'] = float(elapsed)
+        self._timing['last_collect_wall_time_sec'] = wall
 
     def _wrap_angle(self, angle):
         return (angle + np.pi) % (2.0 * np.pi) - np.pi
@@ -423,7 +428,7 @@ class CarRacingCollector:
             elapsed = time.perf_counter() - t0
             rollout_steps = int(np.sum(info['steps']))
 
-            self._accumulate_timing(rollout_steps, elapsed)
+            self._accumulate_timing(rollout_steps, elapsed, wall_time_sec=elapsed)
 
             info['rollout_time_sec'] = float(elapsed)
             info['rollout_steps'] = rollout_steps
@@ -431,18 +436,28 @@ class CarRacingCollector:
 
         return info
 
-    def record_infos_timing(self, infos):
+    def record_infos_timing(self, infos, wall_time_sec=None):
         """
         Merge timing from rollout infos (useful when collect() runs in worker processes).
         """
         if not self.enable_timing:
             return
-        for info in infos:
+        valid_infos = [info for info in infos if 'rollout_time_sec' in info]
+        if not valid_infos:
+            return
+
+        # In parallel mode, use the real batch wall-time once (split across infos)
+        # to avoid overcounting by summing worker runtimes.
+        wall_per_info = None
+        if wall_time_sec is not None:
+            wall_per_info = float(wall_time_sec) / max(len(valid_infos), 1)
+
+        for info in valid_infos:
             if 'rollout_time_sec' not in info:
                 continue
             rollout_steps = int(info.get('rollout_steps', np.sum(info.get('steps', []))))
             elapsed = float(info['rollout_time_sec'])
-            self._accumulate_timing(rollout_steps, elapsed)
+            self._accumulate_timing(rollout_steps, elapsed, wall_time_sec=wall_per_info)
 
     def get_timing_stats(self):
         """
@@ -450,21 +465,28 @@ class CarRacingCollector:
         """
         total_steps = int(self._timing['total_rollout_steps'])
         total_time = float(self._timing['total_rollout_time_sec'])
+        total_wall_time = float(self._timing['total_rollout_wall_time_sec'])
         last_steps = int(self._timing['last_collect_steps'])
         last_time = float(self._timing['last_collect_time_sec'])
+        last_wall_time = float(self._timing['last_collect_wall_time_sec'])
 
-        avg_sps = total_steps / total_time if total_time > 0 else 0.0
-        last_sps = last_steps / last_time if last_time > 0 else 0.0
+        ref_total_time = total_wall_time if total_wall_time > 0 else total_time
+        ref_last_time = last_wall_time if last_wall_time > 0 else last_time
+
+        avg_sps = total_steps / ref_total_time if ref_total_time > 0 else 0.0
+        last_sps = last_steps / ref_last_time if ref_last_time > 0 else 0.0
 
         return {
             'collect_calls': int(self._timing['collect_calls']),
             'total_rollout_steps': total_steps,
             'total_rollout_time_sec': total_time,
+            'total_rollout_wall_time_sec': total_wall_time,
             'avg_steps_per_sec': float(avg_sps),
             'avg_sec_per_100_steps': float(100.0 / avg_sps) if avg_sps > 0 else None,
             'avg_sec_per_1000_steps': float(1000.0 / avg_sps) if avg_sps > 0 else None,
             'last_collect_steps': last_steps,
             'last_collect_time_sec': last_time,
+            'last_collect_wall_time_sec': last_wall_time,
             'last_steps_per_sec': float(last_sps),
         }
 

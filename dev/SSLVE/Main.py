@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from concurrent.futures import ProcessPoolExecutor
+import time
 
 
 _WORKER_SP = None
@@ -20,6 +21,24 @@ def _collect_worker(theta):
     """
     agent = _WORKER_SP.make_agent(theta)
     return _WORKER_CO.collect(agent)
+
+
+def _collect_worker_chunk(theta_chunk):
+    infos = []
+    for theta in theta_chunk:
+        agent = _WORKER_SP.make_agent(theta)
+        infos.append(_WORKER_CO.collect(agent))
+    return infos
+
+
+def _split_into_chunks(items, n_chunks):
+    if n_chunks <= 1 or len(items) <= 1:
+        return [items]
+    n_chunks = min(n_chunks, len(items))
+    chunks = [[] for _ in range(n_chunks)]
+    for i, item in enumerate(items):
+        chunks[i % n_chunks].append(item)
+    return [c for c in chunks if c]
 
 
 class SSLVE:
@@ -77,6 +96,7 @@ class SSLVE:
         )
 
         # Collect
+        t_collect = time.perf_counter()
         if executor is None:
             infos = []
             for theta in thetas:
@@ -84,21 +104,23 @@ class SSLVE:
                 info = self.CO.collect(agent)
                 infos.append(info)
         else:
-            chunksize = max(1, len(thetas) // (self.n_workers * 4))
-            infos = list(executor.map(_collect_worker, thetas, chunksize=chunksize))
+            theta_chunks = _split_into_chunks(thetas, self.n_workers)
+            infos_nested = list(executor.map(_collect_worker_chunk, theta_chunks))
+            infos = [info for chunk in infos_nested for info in chunk]
+            collect_wall_sec = time.perf_counter() - t_collect
             if hasattr(self.CO, 'record_infos_timing'):
-                self.CO.record_infos_timing(infos)
+                self.CO.record_infos_timing(infos, wall_time_sec=collect_wall_sec)
+        if executor is None:
+            collect_wall_sec = time.perf_counter() - t_collect
 
         rollout_steps = 0
-        rollout_time_sec = 0.0
         for info in infos:
             rollout_steps += int(info.get('rollout_steps', sum(info.get('steps', []))))
-            rollout_time_sec += float(info.get('rollout_time_sec', 0.0))
 
-        if rollout_steps > 0 and rollout_time_sec > 0:
-            sps = rollout_steps / rollout_time_sec
+        if rollout_steps > 0 and collect_wall_sec > 0:
+            sps = rollout_steps / collect_wall_sec
             print(
-                f"Rollout timing: {rollout_steps} env-steps in {rollout_time_sec:.2f}s "
+                f"Rollout timing: {rollout_steps} env-steps in {collect_wall_sec:.2f}s "
                 f"({sps:.1f} steps/s | 100 steps: {100.0 / sps:.2f}s | "
                 f"1000 steps: {1000.0 / sps:.2f}s)"
             )
@@ -238,6 +260,7 @@ class MAPElite:
             behavior_matching=self.BM,
         )
 
+        t_collect = time.perf_counter()
         if executor is None:
             infos = []
             for theta in thetas:
@@ -245,21 +268,23 @@ class MAPElite:
                 info = self.CO.collect(agent)
                 infos.append(info)
         else:
-            chunksize = max(1, len(thetas) // (self.n_workers * 4))
-            infos = list(executor.map(_collect_worker, thetas, chunksize=chunksize))
+            theta_chunks = _split_into_chunks(thetas, self.n_workers)
+            infos_nested = list(executor.map(_collect_worker_chunk, theta_chunks))
+            infos = [info for chunk in infos_nested for info in chunk]
+            collect_wall_sec = time.perf_counter() - t_collect
             if hasattr(self.CO, 'record_infos_timing'):
-                self.CO.record_infos_timing(infos)
+                self.CO.record_infos_timing(infos, wall_time_sec=collect_wall_sec)
+        if executor is None:
+            collect_wall_sec = time.perf_counter() - t_collect
 
         rollout_steps = 0
-        rollout_time_sec = 0.0
         for info in infos:
             rollout_steps += int(info.get('rollout_steps', sum(info.get('steps', []))))
-            rollout_time_sec += float(info.get('rollout_time_sec', 0.0))
 
-        if rollout_steps > 0 and rollout_time_sec > 0:
-            sps = rollout_steps / rollout_time_sec
+        if rollout_steps > 0 and collect_wall_sec > 0:
+            sps = rollout_steps / collect_wall_sec
             print(
-                f"Rollout timing: {rollout_steps} env-steps in {rollout_time_sec:.2f}s "
+                f"Rollout timing: {rollout_steps} env-steps in {collect_wall_sec:.2f}s "
                 f"({sps:.1f} steps/s | 100 steps: {100.0 / sps:.2f}s | "
                 f"1000 steps: {1000.0 / sps:.2f}s)"
             )
