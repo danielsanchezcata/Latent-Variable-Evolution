@@ -1,6 +1,9 @@
 import numpy as np
 import random
 import torch
+import time
+import os
+import matplotlib.pyplot as plt
 
 from dev.SSLVE.Main import MAPElite
 from dev.SSLVE.SearchPhases import UniBinUniMemPSE
@@ -44,6 +47,7 @@ REWARD_WEIGHT = 1.0  # @param {type:"number"}
 
 # General
 SEED = 42  # @param {type:"integer"}
+OUTPUT_DIR = "results/carracing_map_v1"  # @param {type:"string"}
 
 if QUICK_EXPERIMENT:
     MAX_STEPS = 300
@@ -53,6 +57,7 @@ if QUICK_EXPERIMENT:
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # =============================================================================
 # Setup
@@ -71,6 +76,36 @@ def fitness_fn(info):
         + TRACK_LIMIT_PENALTY * mean_track_viol
         + INCOMPLETE_LAP_PENALTY * (1.0 - mean_completion)
     )
+
+
+def plot_map_training_summary(history, save_path):
+    """Additional MAP training plot with best-so-far fitness and coverage."""
+    if not history['fitness_min']:
+        return
+
+    steps = np.arange(len(history['fitness_min']))
+    best_so_far = np.minimum.accumulate(np.array(history['fitness_min']))
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+    ax = axes[0]
+    ax.plot(steps, history['fitness_min'], label='Per-step best')
+    ax.plot(steps, best_so_far, label='Best-so-far', linestyle='--')
+    ax.set_xlabel('Step')
+    ax.set_ylabel('Fitness (lower better)')
+    ax.set_title('MAP Fitness Progress')
+    ax.legend()
+
+    ax = axes[1]
+    ax.plot(steps, history['coverage'], label='Coverage')
+    ax.plot(steps, history['archive_size'], label='Archive size')
+    ax.set_xlabel('Step')
+    ax.set_title('MAP Exploration Progress')
+    ax.legend()
+
+    plt.tight_layout()
+    plt.savefig(save_path, bbox_inches='tight')
+    plt.close()
 
 
 collector = CarRacingCollector(max_steps=MAX_STEPS, n_episodes=N_EPISODES, seed=SEED)
@@ -107,9 +142,15 @@ print(f"Mutation sigma={MUTATION_SIGMA}")
 print(f"Quick mode: {QUICK_EXPERIMENT}")
 print(f"MAX_STEPS={MAX_STEPS}, N_SAMPLES={N_SAMPLES}, N_STEPS={N_STEPS}")
 print("Note: MAP baseline rollout/evaluation is CPU-bound (Box2D); GPU has little effect here.")
+print(f"Plot output dir: {OUTPUT_DIR}")
+max_rollout_steps = N_STEPS * N_SAMPLES * N_EPISODES * MAX_STEPS
+print(f"Max rollout steps budget: {max_rollout_steps}")
 print()
 
+t0 = time.perf_counter()
 me.run(n_steps=N_STEPS)
+elapsed = time.perf_counter() - t0
+print(f"\nTotal runtime: {elapsed / 60.0:.2f} min ({elapsed:.1f} sec)")
 
 # =============================================================================
 # Results
@@ -122,4 +163,9 @@ print(f"Best fitness (lower is better): {f_min:.2f}")
 # =============================================================================
 # Plot
 # =============================================================================
-me.plot_history()
+main_plot_path = os.path.join(OUTPUT_DIR, "map_history.png")
+extra_plot_path = os.path.join(OUTPUT_DIR, "map_training_summary.png")
+me.plot_history(save_path=main_plot_path)
+plot_map_training_summary(me.history, extra_plot_path)
+print(f"Saved plot: {main_plot_path}")
+print(f"Saved plot: {extra_plot_path}")
