@@ -526,3 +526,124 @@ class PlanarArmCollector:
             'end_effector': (float(x), float(y)),
             'angle_variance': float(np.var(angles)),
         }
+
+
+
+class EvoGymCollector:
+    """
+    Collector for EvoGym soft robot locomotion.
+    Decodes agent genome to morphology, runs open-loop sinusoidal controller.
+
+    Args:
+        task_name: EvoGym environment name (e.g. 'Walker-v0')
+        max_steps: max simulation steps per episode
+        n_episodes: number of episodes to run
+        seed: random seed
+        freq: sinusoidal controller frequency in Hz
+    """
+
+    def __init__(self, task_name='Walker-v0', max_steps=500, n_episodes=1,
+                 seed=None, freq=2.0):
+        self.task_name = task_name
+        self.max_steps = max_steps
+        self.n_episodes = n_episodes
+        self.seed = seed
+        self.freq = freq
+
+    def collect(self, agent):
+        """
+        Decode agent morphology, run open-loop sinusoidal controller.
+
+        Args:
+            agent: EvoGymAgent with weights already set
+
+        Returns:
+            dict with keys:
+                'reward': list of total reward per episode
+                'displacement': list of horizontal displacement per episode
+                'steps': list of steps per episode
+                'n_rigid': int count of rigid voxels
+                'n_soft': int count of soft voxels
+                'n_h_act': int count of horizontal actuators
+                'n_v_act': int count of vertical actuators
+                'n_empty': int count of empty voxels
+                'n_filled': int count of non-empty voxels
+        """
+        import evogym.envs  # noqa: F401
+
+        body, connections, is_valid = agent.decode_body()
+
+        # Count materials (always computed, even for invalid bodies)
+        n_rigid = int(np.sum(body == 1))
+        n_soft = int(np.sum(body == 2))
+        n_h_act = int(np.sum(body == 3))
+        n_v_act = int(np.sum(body == 4))
+        n_empty = int(np.sum(body == 0))
+        n_filled = n_rigid + n_soft + n_h_act + n_v_act
+
+        material_info = {
+            'n_rigid': n_rigid,
+            'n_soft': n_soft,
+            'n_h_act': n_h_act,
+            'n_v_act': n_v_act,
+            'n_empty': n_empty,
+            'n_filled': n_filled,
+        }
+
+        if not is_valid:
+            return {
+                'reward': [0.0] * self.n_episodes,
+                'displacement': [0.0] * self.n_episodes,
+                'steps': [0] * self.n_episodes,
+                **material_info,
+            }
+
+        phases = agent.get_actuator_phases(body)
+        n_actuators = len(phases)
+
+        all_rewards = []
+        all_displacements = []
+        all_steps = []
+
+        for ep in range(self.n_episodes):
+            seed = self.seed + ep if self.seed is not None else None
+            try:
+                env = gym.make(self.task_name, body=body, connections=connections,
+                               render_mode=None)
+                obs, _ = env.reset(seed=seed)
+            except Exception:
+                all_rewards.append(0.0)
+                all_displacements.append(0.0)
+                all_steps.append(0)
+                continue
+
+            total_reward = 0.0
+            initial_x = env.unwrapped.get_pos_com_obs("robot")[0]
+
+            for t in range(self.max_steps):
+                # Open-loop sinusoidal controller
+                action = np.array([
+                    0.6 + 0.5 * (1.0 + np.sin(
+                        2.0 * np.pi * self.freq * t / 40.0 + phases[i]
+                    ))
+                    for i in range(n_actuators)
+                ])
+                obs, reward, terminated, truncated, info = env.step(action)
+                total_reward += reward
+                if terminated or truncated:
+                    break
+
+            final_x = env.unwrapped.get_pos_com_obs("robot")[0]
+            displacement = float(final_x - initial_x)
+            env.close()
+
+            all_rewards.append(float(total_reward))
+            all_displacements.append(displacement)
+            all_steps.append(t + 1)
+
+        return {
+            'reward': all_rewards,
+            'displacement': all_displacements,
+            'steps': all_steps,
+            **material_info,
+        }
